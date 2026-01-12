@@ -1,0 +1,1 @@
+ docker compose -f ./docker/docker-compose.yaml run --build --rm app

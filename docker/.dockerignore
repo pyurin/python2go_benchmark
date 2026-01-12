@@ -1,0 +1,5 @@
+# Exclude go/bin directory
+go/bin/
+
+# Exclude python/.venv directory
+python/.venv/

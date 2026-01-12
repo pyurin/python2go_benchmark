@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile_inline: |
+        FROM ubuntu:22.04
+        
+        WORKDIR /app
+        
+        # Install uv
+        # The installer requires curl (and certificates) to download the release archive
+        RUN apt-get update && apt-get install -y --no-install-recommends gnupg software-properties-common curl ca-certificates
+              
+        
+        # UV
+        ADD https://astral.sh/uv/install.sh /uv-installer.sh
+        RUN sh /uv-installer.sh && rm /uv-installer.sh
+        ENV PATH="/root/.local/bin/:$PATH"
+        COPY python/pyproject.toml ./python/pyproject.toml
+        RUN uv sync --directory /app/python/
+        
+        # GO 
+        RUN add-apt-repository -y ppa:longsleep/golang-backports
+        RUN apt update
+        RUN apt install -y golang-go protobuf-compiler
+        RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        ENV PATH="/root/go/bin/:$PATH"
+        COPY go/ ./go/      
+        RUN go -C ./go/src/ mod tidy
+
+        # Copy directories and files from parent context
+        COPY grpc/ ./grpc/
+        COPY python/ ./python/
+        COPY build.sh ./
+        
+        # Build
+        RUN chmod +x build.sh      
+        RUN PATH='/root/go/bin/:/root/.local/bin/:$PATH' ./build.sh
+        
+
+        CMD ["/bin/bash", "-l", "-c", "uv --directory=./python run src/run.py"]
+        #CMD ["/bin/bash"]
+    container_name: perftest-app
+    restart: "no"
